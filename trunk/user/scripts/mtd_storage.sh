@@ -3,7 +3,7 @@
 result=0
 mtd_part_name="Storage"
 mtd_part_dev="/dev/mtdblock5"
-mtd_part_size=17825792
+mtd_part_size=19922944
 dir_storage="/etc/storage"
 slk="/tmp/.storage_locked"
 tmp="/tmp/storage.tar"
@@ -21,7 +21,7 @@ func_get_mtd()
 		mtd_part_dev="/dev/mtdblock${mtd_idx}"
 		mtd_part_size=`echo $((0x$mtd_hex))`
 	else
-		logger -t "Storage" "Cannot find MTD partition: $mtd_part_name"
+		logger -t "Storage" "无法找到 MTD 分区: $mtd_part_name"
 		exit 1
 	fi
 }
@@ -54,7 +54,7 @@ func_load()
 	else
 		result=1
 		rm -f $hsh
-		logger -t "Storage load" "Invalid storage data in MTD partition: $mtd_part_dev"
+		logger -t "Storage load" "MTD 分区中的存储数据无效: $mtd_part_dev"
 	fi
 	rm -f $tmp
 	rm -f $slk
@@ -68,7 +68,7 @@ func_tarb()
 	find * ! -type d -print0 | sort -z | xargs -0 tar -cf $tmp 2>/dev/null
 	cd - >>/dev/null
 	if [ ! -f "$tmp" ] ; then
-		logger -t "Storage" "Cannot create tarball file: $tmp"
+		logger -t "Storage" "无法创建 tarball 文件: $tmp"
 		exit 1
 	fi
 }
@@ -77,12 +77,12 @@ func_save()
 {
 	local fsz
 
-	logger -t "Storage save" "Save storage files to MTD partition \"$mtd_part_dev\""
-	echo "Save storage files to MTD partition \"$mtd_part_dev\""
+	logger -t "Storage save" "将存储文件保存到 MTD 分区 \"$mtd_part_dev\""
+	echo "将存储文件保存到 MTD 分区 \"$mtd_part_dev\""
 	rm -f $tbz
 	md5sum -c -s $hsh 2>/dev/null
 	if [ $? -eq 0 ] ; then
-		echo "Storage hash is not changed, skip write to MTD partition. Exit."
+		echo "存储哈希未更改，跳过写入 MTD 分区。退出。"
 		rm -f $tmp
 		return 0
 	fi
@@ -92,17 +92,17 @@ func_save()
 	if [ -n "$fsz" ] && [ $fsz -ge 16 ] && [ $fsz -le $mtd_part_size ] ; then
 		mtd_write write $tbz $mtd_part_name
 		if [ $? -eq 0 ] ; then
-			echo "Done."
-			logger -t "Storage save" "Done."
+			echo "完成."
+			logger -t "Storage save" "完成."
 		else
 			result=1
-			echo "Error! MTD write FAILED"
-			logger -t "Storage save" "Error write to MTD partition: $mtd_part_dev"
+			echo "错误！MTD 写入失败。"
+			logger -t "Storage save" "错误！MTD 写入失败。: $mtd_part_dev"
 		fi
 	else
 		result=1
-		echo "Error! Invalid storage final data size: $fsz"
-		logger -t "Storage save" "Invalid storage final data size: $fsz"
+		echo "错误！无效的存储最终数据大小: $fsz"
+		logger -t "Storage save" "无效的存储最终数据大小: $fsz"
 	fi
 	rm -f $tmp
 	rm -f $tbz
@@ -114,7 +114,7 @@ func_backup()
 	bzip2 -9 $tmp 2>/dev/null
 	if [ $? -ne 0 ] ; then
 		result=1
-		logger -t "Storage backup" "Cannot create BZ2 file!"
+		logger -t "Storage backup" "无法创建 BZ2 文件!"
 	fi
 	rm -f $tmp
 }
@@ -129,7 +129,7 @@ func_restore()
 	if [ -z "$fsz" ] || [ $fsz -lt 16 ] || [ $fsz -gt $mtd_part_size ] ; then
 		result=1
 		rm -f $tbz
-		logger -t "Storage restore" "Invalid BZ2 file size: $fsz"
+		logger -t "Storage restore" "无效的 BZ2 文件大小: $fsz"
 		return 1
 	fi
 
@@ -141,14 +141,14 @@ func_restore()
 		result=1
 		rm -f $tbz
 		rm -rf $tmp_storage
-		logger -t "Storage restore" "Unable to extract BZ2 file: $tbz"
+		logger -t "Storage restore" "无法解压 BZ2 文件: $tbz"
 		return 1
 	fi
 	if [ ! -f "$tmp_storage/start_script.sh" ] ; then
 		result=1
 		rm -f $tbz
 		rm -rf $tmp_storage
-		logger -t "Storage restore" "Invalid content of BZ2 file: $tbz"
+		logger -t "Storage restore" "BZ2 文件内容无效: $tbz"
 		return 1
 	fi
 
@@ -207,6 +207,8 @@ func_fill()
 	script_vpnsc="$dir_storage/vpns_client_script.sh"
 	script_vpncs="$dir_storage/vpnc_server_script.sh"
 	script_ezbtn="$dir_storage/ez_buttons_script.sh"
+	script_gipv6="$dir_storage/getipv6.sh"
+	script_ipv6="$dir_storage/ipv6.sh"
 	script_rros="$dir_storage/rps-rfs-ops.sh"
 
 	user_hosts="$dir_dnsmasq/hosts"
@@ -282,14 +284,25 @@ sync && echo 3 > /proc/sys/vm/drop_caches
 #wing 192.168.1.9:1080
 #ipset add gfwlist 8.8.4.4
 
-# Wake on LAN.
-# ether-wake -i br0 [MAC]
-# BACKUP NAS
-ether-wake -i br0 00:6A:3C:68:62:49
+
+#**************github下载加速******************
+#建议自建加速，项目：https://github.com/hunshcn/gh-proxy
+#设置github加速下载镜像代理地址，失效请自行更换(按下方格式填写，每行一个，末尾加/)
+nvram set github_proxy="https://ghfast.top/
+https://gh.catmak.name/
+https://gh-proxy.com/
+https://github.akams.cn/
+"
+#*************github下载加速******************
+#**************替换背景图片******************
+#上传图片命名为wood.jpg到/etc/storage/bg/目录里即可，刷新浏览器缓存
+#**************替换背景图片*******************
+##挂载内存多少M，如果你觉得你tmp目录空间不够，可以去掉下方的#修改下方的50为你需要的大小，不可超出设备硬件内存大小##
+ #mount -t tmpfs -o remount,rw,size=50M tmpfs /tmp
 
 # CPU利用率优化，来自：https://www.right.com.cn/forum/thread-4031767-1-1.html
 /etc/storage/rps-rfs-ops.sh set
-
+ 
 EOF
 		chmod 755 "$script_started"
 	fi
@@ -318,31 +331,83 @@ EOF
 
 #wing resume
 
+#自动配置 POSTROUTING 的 MSS钳制,防止网络堵塞和数据丢失
+iptables -t mangle -A POSTROUTING ! -o br0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+ip6tables -t mangle -A POSTROUTING ! -o br0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+
+# 手动指定MSS
+#iptables -t mangle -A POSTROUTING ! -o br0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss 1452
+#ip6tables -t mangle -A POSTROUTING ! -o br0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss 1432
+
+### ipv6防火墙全关规则 以下把#去掉则关闭ip6防火墙 
+#ip6tables -F
+#ip6tables -X
+#ip6tables -P INPUT ACCEPT
+#ip6tables -P OUTPUT ACCEPT
+#ip6tables -P FORWARD ACCEPT
+
+### ipv6防火墙单独规则 开放3389远程桌面 其它端口按下方规则添加 以下把#去掉则生效
+#ip6tables -I FORWARD -p tcp --dport 3389 -j ACCEPT
+#ip6tables -I FORWARD -p tcp --dport 8829 -j ACCEPT
+
 EOF
 		chmod 755 "$script_postf"
 	fi
 
-	# create post-wan script
-	if [ ! -f "$script_postw" ] ; then
-		cat > "$script_postw" <<EOF
+# create gipv6 script
+
+if [ ! -f "$script_gipv6" ] ; then
+		cat > "$script_gipv6" <<EOF
 #!/bin/sh
 
 ### Custom user script
+### getipv6
+#wing resume
+hostipv6=\`ip -6 neighbor show | grep -i  \$1 | sed -n 's/.dev* \([0-9a-f:]\+\).*/\2/p' |  grep -v fe80:: |tail -n 1\`
+echo \${hostipv6}
+
+EOF
+		chmod 755 "$script_gipv6"
+fi
+
+# create ipv6 script
+
+
+if [ ! -f "$script_ipv6" ] ; then
+		cat > "$script_ipv6" <<EOF
+#!/bin/sh
+
+### Custom user script
+### showipv6
+#wing resume
+cat /tmp/static_ip.inf | grep -v  "^$" | awk -F "," ' { sh "/etc/storage/getipv6.sh " \$2 |getline result;if ( \$6 == 0 ) print \$1,result ","\$2","\$3","\$4","\$5","\$6} ' > /tmp/static_ipv6.inf
+EOF
+		chmod 755 "$script_ipv6"
+fi
+
+
+# create post-wan script
+
+if [ ! -f "$script_postw" ] ; then
+	cat > "$script_postw" <<EOF
+#!/bin/sh
+#mtk_gpio -d 6 0
 ### Called after internal WAN up/down action
 ### \$1 - WAN action (up/down)
 ### \$2 - WAN interface name (e.g. eth3 or ppp0)
 ### \$3 - WAN IPv4 address
 
-# Update smartdns ad-list.
-# wget -q -T 10 --no-check-certificate -O /tmp/blacklist.conf https://neodev.team/smartdns.conf
-# smartdns stop && smartdns start >/dev/null 2>&1
+
+
 
 # CPU利用率优化，来自：https://www.right.com.cn/forum/thread-4031767-1-1.html
 /etc/storage/rps-rfs-ops.sh set
 
+
 EOF
-		chmod 755 "$script_postw"
-	fi
+
+	chmod 755 "$script_postw"
+fi
 
 	# create inet-state script
 	if [ ! -f "$script_inets" ] ; then
@@ -474,46 +539,6 @@ EOF
 		chmod 755 "$script_ezbtn"
 	fi
 
-	# create user dnsmasq.conf
-	[ ! -d "$dir_dnsmasq" ] && mkdir -p -m 755 "$dir_dnsmasq"
-	for i in dnsmasq.conf hosts ; do
-		[ -f "$dir_storage/$i" ] && mv -n "$dir_storage/$i" "$dir_dnsmasq"
-	done
-	if [ ! -f "$user_dnsmasq_conf" ] ; then
-		cat > "$user_dnsmasq_conf" <<EOF
-# Custom user conf file for dnsmasq
-# Please add needed params only!
-
-### Web Proxy Automatic Discovery (WPAD)
-dhcp-option=252,"\n"
-
-### Set the limit on DHCP leases, the default is 150
-#dhcp-lease-max=150
-
-### Add local-only domains, queries are answered from hosts or DHCP only
-#local=/router/localdomain/
-
-### Examples:
-
-### Enable built-in TFTP server
-#enable-tftp
-
-### Set the root directory for files available via TFTP.
-#tftp-root=/opt/srv/tftp
-
-### Make the TFTP server more secure
-#tftp-secure
-
-### Set the boot filename for netboot/PXE
-#dhcp-boot=pxelinux.0
-
-### Log for all queries
-#log-queries
-
-### Keep DHCP host name valid at any times
-#dhcp-to-host
-
-EOF
 	# create rps-rfs-ops script
 	if [ ! -f "$script_rros" ] ; then
 		cat > "$script_rros" <<'EOF'
@@ -557,7 +582,50 @@ esac
 EOF
 		chmod 755 "$script_rros"
 	fi
- 
+
+	# create user dnsmasq.conf
+	[ ! -d "$dir_dnsmasq" ] && mkdir -p -m 755 "$dir_dnsmasq"
+	for i in dnsmasq.conf hosts ; do
+		[ -f "$dir_storage/$i" ] && mv -n "$dir_storage/$i" "$dir_dnsmasq"
+	done
+	if [ ! -f "$user_dnsmasq_conf" ] ; then
+		cat > "$user_dnsmasq_conf" <<EOF
+# Custom user conf file for dnsmasq
+# Please add needed params only!
+
+### Turn off this service
+#port=0
+
+### Web Proxy Automatic Discovery (WPAD)
+dhcp-option=252,"\n"
+
+### Set the limit on DHCP leases, the default is 150
+#dhcp-lease-max=600
+
+### Add local-only domains, queries are answered from hosts or DHCP only
+#local=/router/localdomain/
+
+### Examples:
+
+### Enable built-in TFTP server
+#enable-tftp
+
+### Set the root directory for files available via TFTP.
+#tftp-root=/opt/srv/tftp
+
+### Make the TFTP server more secure
+#tftp-secure
+
+### Set the boot filename for netboot/PXE
+#dhcp-boot=pxelinux.0
+
+### Log for all queries
+#log-queries
+
+### Keep DHCP host name valid at any times
+#dhcp-to-host
+
+EOF
 	if [ -f /usr/bin/vlmcsd ]; then
 		cat >> "$user_dnsmasq_conf" <<EOF
 ### vlmcsd related
